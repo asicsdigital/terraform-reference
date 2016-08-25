@@ -13,32 +13,37 @@ variable "ami" {
 
 variable "key_name" {
   description = "SSH key name in your AWS account for AWS instances."
-    default = "amazonhosts"
+    default   = "amazonhosts"
 }
 
 variable "key_path" {
-  description = "Path to the private key specified by key_name."
-    default = {
+  description  = "Path to the private key specified by key_name."
+    default    = {
       key_path = "/Users/alaric/amazonhosts.pem"
     }
 }
 
 variable "region" {
-  default = "us-east-1"
+  default     = "us-east-1"
   description = "The region of AWS, for AMI lookups."
 }
 
 variable "servers" {
-  default = "2"
+  default     = "2"
   description = "The number of servers to launch."
 }
 
 variable "instance_type" {
-  default = "t2.micro"
+  default     = "t2.micro"
   description = "AWS Instance type, if you change, make sure it is compatible with AMI, not all AMIs allow all instance types "
 }
 
 variable "tagName" {
-  default = "ECS Node"
+  default     = "ECS Node"
   description = "Name tag for the servers"
+}
+
+variable "slack_url" {
+  default     = "https://hooks.slack.com/services/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"
+  description = "URL to pass as an environment variable to the lunchbox bot"
 }
