@@ -5,7 +5,7 @@ resource "aws_instance" "server" {
     count                = "${var.servers}"
 #    security_groups = ["${aws_security_group.consul.name}"]
     #security_groups = ["allow_ssh"]
-    subnet_id            = "subnet-6e101446"
+    subnet_id            = "${var.subnet_id}"
     #iam_instance_profile = "AmazonECSContainerInstanceRole"
     iam_instance_profile = "${aws_iam_instance_profile.ecs_test_profile.name}"
     depends_on           = ["aws_iam_instance_profile.ecs_test_profile"]

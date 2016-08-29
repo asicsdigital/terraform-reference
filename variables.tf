@@ -47,3 +47,8 @@ variable "slack_url" {
   default     = "https://hooks.slack.com/services/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"
   description = "URL to pass as an environment variable to the lunchbox bot"
 }
+
+variable "subnet_id" {
+  default     = "subnet-6e101446"
+  description = "The AWS Subnet ID in whic you want to delpoy your instances"
+}
