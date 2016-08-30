@@ -1,11 +1,16 @@
+# This module will depend on a couple of inputs
+# vpc_id, subnet_id
+# Read credentials from environment variables
+#$ export AWS_ACCESS_KEY_ID="anaccesskey"
+#$ export AWS_SECRET_ACCESS_KEY="asecretkey"
+#$ export AWS_DEFAULT_REGION="us-west-2"
+
 resource "aws_instance" "server" {
     ami                  = "${lookup(var.ami, "${var.region}")}"
     instance_type        = "${var.instance_type}"
     key_name             = "${var.key_name}"
     count                = "${var.servers}"
     vpc_security_group_ids = ["${aws_security_group.ecs.id}"]
-#    security_groups = ["${aws_security_group.consul.name}"]
-    #security_groups = ["allow_ssh"]
     subnet_id            = "${var.subnet_id}"
     #iam_instance_profile = "AmazonECSContainerInstanceRole"
     iam_instance_profile = "${aws_iam_instance_profile.ecs_test_profile.name}"
@@ -28,9 +33,9 @@ EOF
 resource "aws_security_group" "ecs" {
   name        = "ecs-sg"
   description = "Container Instance Allowed Ports"
-  vpc_id      = "vpc-99e73dfc"
+  vpc_id      = "${var.vpc_id}"
   ingress {
-    from_port   = 1
+    from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
@@ -70,5 +75,5 @@ resource "aws_ecs_service" "slack_lunchbot" {
   cluster = "${aws_ecs_cluster.lunchbot.id}"
   task_definition = "${aws_ecs_task_definition.ecs-lunchbot.arn}"
   desired_count = 1
-  depends_on = ["aws_iam_role_policy.lunchbot"]
+  depends_on = ["aws_iam_instance_profile.ecs_test_profile"]
 }
