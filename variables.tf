@@ -50,5 +50,9 @@ variable "slack_url" {
 
 variable "subnet_id" {
   default     = "subnet-6e101446"
-  description = "The AWS Subnet ID in whic you want to delpoy your instances"
+  description = "The AWS Subnet ID in which you want to delpoy your instances"
+}
+variable "vpc_id" {
+  default     = "vpc-99e73dfc"
+  description = "The AWS VPC ID which you want to deploy your instances"
 }
