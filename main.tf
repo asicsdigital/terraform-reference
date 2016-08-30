@@ -3,12 +3,13 @@ resource "aws_instance" "server" {
     instance_type        = "${var.instance_type}"
     key_name             = "${var.key_name}"
     count                = "${var.servers}"
+    vpc_security_group_ids = ["${aws_security_group.ecs.id}"]
 #    security_groups = ["${aws_security_group.consul.name}"]
     #security_groups = ["allow_ssh"]
     subnet_id            = "${var.subnet_id}"
     #iam_instance_profile = "AmazonECSContainerInstanceRole"
     iam_instance_profile = "${aws_iam_instance_profile.ecs_test_profile.name}"
-    depends_on           = ["aws_iam_instance_profile.ecs_test_profile"]
+    depends_on           = ["aws_iam_instance_profile.ecs_test_profile", "aws_security_group.ecs"]
     user_data = <<EOF
 #!/bin/bash
 echo ECS_CLUSTER=${aws_ecs_cluster.lunchbot.name} >> /etc/ecs/ecs.config
@@ -24,19 +25,50 @@ EOF
     }
 }
 
+resource "aws_security_group" "ecs" {
+  name        = "ecs-sg"
+  description = "Container Instance Allowed Ports"
+  vpc_id      = "vpc-99e73dfc"
+  ingress {
+    from_port   = 1
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags {
+    Name = "ecs-sg"
+  }
+}
+
+# Make this a var that an get passed in?
 resource "aws_ecs_cluster" "lunchbot" {
   name = "infra-services"
 }
 
 resource "aws_ecs_task_definition" "ecs-lunchbot" {
-  family = "ecs-lunchbot"
+  family                = "ecs-lunchbot"
   container_definitions = "${template_file.lunchbot-container.rendered}"
 }
-
 
 resource "template_file" "lunchbot-container" {
   template = "${file("lunchbot.json")}"
   vars {
     slack_url = "${var.slack_url}"
   }
+}
+
+resource "aws_ecs_service" "slack_lunchbot" {
+  name = "slack_lunchbot"
+  cluster = "${aws_ecs_cluster.lunchbot.id}"
+  task_definition = "${aws_ecs_task_definition.ecs-lunchbot.arn}"
+  desired_count = 1
+  depends_on = ["aws_iam_role_policy.lunchbot"]
 }

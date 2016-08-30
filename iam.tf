@@ -38,11 +38,11 @@ data "aws_iam_policy_document" "ecs_cluster_example" {
 
 resource "aws_iam_role_policy" "lunchbot" {
     name   = "ecs_example_policy"
-    role   = "${aws_iam_role.role.id}"
+    role   = "${aws_iam_role.lunchbot_role.id}"
     policy = "${data.aws_iam_policy_document.ecs_cluster_example.json}"
 }
 
-resource "aws_iam_role" "role" {
+resource "aws_iam_role" "lunchbot_role" {
     name               = "ecs_test_role"
     path               = "/"
     #assume_role_policy = "${data.aws_iam_policy_document.ecs_cluster_example.json}"
@@ -93,5 +93,5 @@ EOF
 
 resource "aws_iam_instance_profile" "ecs_test_profile" {
     name = "ecs_test_profile"
-    roles = ["${aws_iam_role.role.name}"]
+    roles = ["${aws_iam_role.lunchbot_role.name}"]
 }
