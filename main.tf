@@ -7,7 +7,7 @@
 
 module "ecs-cluster" {
   source       = "./terraform-ecs-cluster"
-  cluster_name = "infra-services"
+  name         = "infra-services"
   servers      = 1
   subnet_id    = "subnet-6e101446"
   vpc_id       = "vpc-99e73dfc"
