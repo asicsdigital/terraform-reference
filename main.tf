@@ -11,6 +11,7 @@ module "ecs-cluster" {
   servers      = 1
   subnet_id    = "subnet-6e101446"
   vpc_id       = "vpc-99e73dfc"
+  #ami = { us-east-1 = "ami-6869aa05" }
 }
 
 resource "aws_ecs_task_definition" "ecs-lunchbot" {
