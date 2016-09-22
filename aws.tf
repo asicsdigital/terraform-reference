@@ -3,4 +3,6 @@
 #$ export AWS_SECRET_ACCESS_KEY="asecretkey"
 #$ export AWS_DEFAULT_REGION="us-west-2"
 #$ terraform plan
-provider "aws" {}
+provider "aws" {
+  profile = "${var.aws_profile}"
+}
