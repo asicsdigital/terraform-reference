@@ -6,8 +6,12 @@
        {
          "name": "SLACK_URL",
          "value": "${slack_url}"
+       },
+       {
+         "name": "JOB_TIME",
+         "value": "${lunchbot_cron}"
        }
      ],
-     "image": "tfhartmann/lunchbot"
+     "image": "tfhartmann/lunchbot:job_times"
    }
  ]

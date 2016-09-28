@@ -2,4 +2,5 @@
 
 variable "env" { }
 variable "slack_url" { }
+variable "lunchbot_cron" {}
 variable "aws_key_name" { }

@@ -42,7 +42,8 @@ resource "aws_ecs_task_definition" "ecs-lunchbot" {
 resource "template_file" "lunchbot-container" {
   template = "${file("lunchbot.json")}"
   vars {
-    slack_url = "${var.slack_url}"
+    slack_url = "${var.slack_url}",
+    lunchbot_cron = "${var.lunchbot_cron}"
   }
 }
 
