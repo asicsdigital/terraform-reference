@@ -29,7 +29,7 @@ module "ecs-cluster" {
   source       = "github.com/tfhartmann/tf-aws-ecs"
   name         = "infra-svc-lunchbot"
   servers      = 1
-  subnet_id    = "${element(module.vpc.public_subnets, 0)}"
+  subnet_id    = "${module.vpc.public_subnets}"
   vpc_id       = "${module.vpc.vpc_id}"
   key_name     = "${var.aws_key_name}"
 }
