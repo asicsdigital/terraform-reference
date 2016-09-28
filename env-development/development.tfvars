@@ -1,4 +1,4 @@
 env = "dev"
 
-slack_url = "bar"
+slack_url = "foo"
 aws_key_name = "rk_aws_dev"
