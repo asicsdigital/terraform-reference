@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILE=foo.tf
+FILE=variables.tf
 
 source .env
 
