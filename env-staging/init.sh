@@ -22,7 +22,7 @@ fi
 
 set -e
 
-tf_env="base"
+tf_env="staging"
 
 aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 
