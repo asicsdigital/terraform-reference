@@ -8,9 +8,9 @@ TLDR, but really, go read the post, it's way better then what I'm going to write
 - Clone the repo `git clone https://github.com/FitnessKeeper/terraform-reference`
 - Edit .env in the root of the repo, in particular make sure you add a TF_PROJECT_NAME
 - Initialize variables.tf, this only needs to be done once, when the repo is created run `./init-variables.tf.sh`
-
 - Edit variables.tf to reflect your new service
--
+
+
 
 ### To use an environment in the control repo
 - `cd` into the base dir for the env you want to work on
