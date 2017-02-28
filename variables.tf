@@ -28,11 +28,12 @@ variable "aws_profile" {
 variable "region" { default = "us-east-1" }
 
 variable "tf_s3_bucket" {
-  description = "S3 Bucket Terraform can use for state"
-  default     = "lunchbot-terraform-state"
+  description = "S3 bucket Terraform can use for state"
+  default     = "rk-devops-state-us-east-1"
 }
 
-variable "master_state_file" { default = "base/base.tfstate" }
-variable "prod_state_file" { default = "production/production.tfstate" }
-variable "staging_state_file" { default = "staging/staging.tfstate" }
-variable "dev_state_file" { default = "dev/dev.tfstate" }
+
+#variable "master_state_file" { default = "terraform-reference/state/base/base.tfstate" }
+#variable "prod_state_file" { default = "terraform-reference/state/production/production.tfstate" }
+#variable "staging_state_file" { default = "terraform-reference/state/staging/staging.tfstate" }
+#variable "dev_state_file" { default = "terraform-reference/state/dev/dev.tfstate" }
