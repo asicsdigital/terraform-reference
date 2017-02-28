@@ -22,3 +22,9 @@ TLDR, but really, go read the post, it's way better then what I'm going to write
 - `./init.sh` # to initialize your environment
 - `terraform get` # to load your modules
 - `terraform plan -var-file=development.tfvars` # manage all the things!
+
+### Design pattern
+
+We are trying to follow a pattern where we have an infrastructure repo with 3 tiers - dev, stage, and production, known as FitnessKeeper/terraform-runkeeper. We will use that control repo to build VPC, ECS Clusters, DNS Zones, and other resources that can be presented as a platform for use by services.  
+
+  Services, will be created using atomic control repos, based off this skel, and have distinct state files for each of the tiers. In this way, we can make changes to the state of a service living atop our infrastructure, without having to push stage changes to the underlying resources.
