@@ -8,6 +8,10 @@ TLDR, but really, go read the post, it's way better then what I'm going to write
 - Clone the repo `git clone https://github.com/FitnessKeeper/terraform-reference`
 - Edit .env in the root of the repo, in particular make sure you add a TF_PROJECT_NAME
 - Initialize variables.tf, this only needs to be done once, when the repo is created run `./init-variables.tf.sh`
+-  Remove the old origin `git remote rm origin`
+-  Add your new repo `git remote add origin https://github.com/FitnessKeeper/terraform-reference.git`
+- Commit your changes
+- `git push -u origin master`
 - Edit variables.tf to reflect your new service
 
 
