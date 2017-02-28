@@ -6,13 +6,29 @@
 #
 # terraform plan  -var-file=./production.tfvars
 # terraform apply -var-file=./production.tfvars
+#
+# Make sure you populate the repo's .env file in the root of the repo
+source ../.env
 
-# tf_env="production"
+if [ -z "$(which terraform 2>/dev/null)" ]; then
+  echo "unable to find 'terraform' in \$PATH, exiting."
+  exit 1
+fi
+
+set -e
+
 tf_env="base"
 
-terraform remote config -backend=s3 \
-                        -backend-config="bucket=lunchbot-terraform-state" \
-                        -backend-config="key=${tf_env}/${tf_env}.tfstate" \
-                        -backend-config="region=us-east-1"
+aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 
-echo "set remote s3 state to $tf_env.tfstate"
+s3_bucket="rk-devops-state-${aws_default_region}"
+s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
+
+#terraform remote config -backend=s3 \
+#                        -backend-config="bucket=${s3_bucket}" \
+#                        -backend-config="key=${s3_prefix}/${tf_env}.tfstate" \
+#                        -backend-config="region=${aws_default_region}"
+
+echo "set remote s3 state to ${s3_bucket}/${s3_prefix}/${tf_env}.tfstate"
+
+# vim: set et fenc=utf-8 ff=unix sts=2 sw=2 ts=2 :
