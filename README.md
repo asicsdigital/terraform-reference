@@ -2,7 +2,9 @@ Terraform Control repo built following the pattern as outlined by [Charity Major
 
 TLDR, but really, go read the post, it's way better then what I'm going to write here..
 
+### Terraform Version
 
+The Current production [terraform version](https://github.com/FitnessKeeper/terraform-runkeeper#terraform-version) can be found here
 ### To create a new repo using the terraform-reference repo.
 
 - Clone the repo `git clone https://github.com/FitnessKeeper/terraform-reference`
