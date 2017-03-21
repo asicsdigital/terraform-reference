@@ -30,11 +30,29 @@ aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 s3_bucket="rk-devops-state-${aws_default_region}"
 s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
 
-terraform remote config -backend=s3 \
-                        -backend-config="bucket=${s3_bucket}" \
-                        -backend-config="key=${s3_prefix}/${tf_env}.tfstate" \
-                        -backend-config="region=${aws_default_region}"
+FILE="terraform.tf"
 
-echo "set remote s3 state to ${s3_bucket}/${s3_prefix}/${tf_env}.tfstate"
+export TF=$(cat <<EOF
+terraform {
+  backend "s3" {
+    bucket = "${s3_bucket}"
+    region = "${aws_default_region}"
+    key    = "${s3_prefix}/${tf_env}.tfstate"
+  }
+}
+EOF
+)
 
+
+if [ ! -s $FILE ]; then
+  echo "Populating terraform.tf for this environment"
+  echo "$TF" > $FILE
+fi
+
+terraform init -backend=true \
+               -backend-config="bucket=${s3_bucket}" \
+               -backend-config="key=${s3_prefix}/${tf_env}.tfstate" \
+               -backend-config="region=${aws_default_region}"
+
+ echo "set remote s3 state to ${s3_bucket}/${s3_prefix}/${tf_env}.tfstate"
 # vim: set et fenc=utf-8 ff=unix sts=2 sw=2 ts=2 :
