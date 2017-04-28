@@ -30,14 +30,19 @@ aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 s3_bucket="rk-devops-state-${aws_default_region}"
 s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
 
+tf_version="${TF_VERSION:-0.9.3}"
+tf_lock_table="${TF_LOCK_TABLE:-rk-terraformStateLock}"
+
 FILE="terraform.tf"
 
 export TF=$(cat <<EOF
 terraform {
+  required_version = ">= ${tf_version}"
   backend "s3" {
     bucket = "${s3_bucket}"
     region = "${aws_default_region}"
     key    = "${s3_prefix}/${tf_env}.tfstate"
+    lock_table = "${tf_lock_table}"
   }
 }
 EOF
