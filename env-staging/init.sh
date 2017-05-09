@@ -31,7 +31,7 @@ s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
 
 FILE="terraform.tf"
 
-tf_version="${TF_VERSION:-0.9.3}"
+tf_version="${TF_VERSION:-0.9.4}"
 tf_lock_table="${TF_LOCK_TABLE:-rk-terraformStateLock}"
 
 export TF=$(cat <<EOF
