@@ -3,12 +3,15 @@
 FILE=variables.tf
 
 source .env
+aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 
 if [ -z ${TF_PROJECT_NAME} ]; then
   echo "'TF_PROJECT_NAME' is empty, exiting with failure."
   exit 1
 fi
 echo $TF_PROJECT_NAME
+
+tf_spine="${TF_SPINE:-rk}"
 
 export VARIABLES_TF=$(cat <<EOF
 #  Variables.tf declares has the default variables that are shared by all environments
@@ -38,7 +41,7 @@ variable "aws_profile" {
   description = "Which AWS profile is should be used? Defaults to \"default\""
   default     = "default"
 }
-variable "region" { default = "us-east-1" }
+variable "region" { default = "${aws_default_region}" }
 
 
 # This should be changed to reflect the service / stack defined by this repo
@@ -47,7 +50,7 @@ variable "stack" { default = "ref" }
 
 variable "tf_s3_bucket" {
   description = "S3 bucket Terraform can use for state"
-  default     = "rk-devops-state-us-east-1"
+  default     = "${tf_spine}-devops-state-${aws_default_region}"
 }
 
 variable "master_state_file" { default = "${TF_PROJECT_NAME}/state/base/base.tfstate" }

@@ -9,6 +9,8 @@ The Current production [terraform version](https://github.com/FitnessKeeper/terr
 
 - Clone the repo `git clone https://github.com/FitnessKeeper/terraform-reference`
 - Edit .env in the root of the repo, in particular make sure you add a TF_PROJECT_NAME
+  - When creating a `spike` make sure you update TF_SPINE in env if something other then `rk` is needed, at the time of this writing `rk` and `asics` are valid spines.
+  - Also when creating ASICS `spikes` update to `TF_LOCK_TABLE=asics-services-terraformStateLock` 
 - Initialize variables.tf, this only needs to be done once, when the repo is created run `./init-variables.tf.sh`
 -  Remove the old origin `git remote rm origin`
 -  Add your new repo `git remote add origin https://github.com/FitnessKeeper/terraform-reference.git`
