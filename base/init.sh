@@ -22,11 +22,12 @@ fi
 
 set -e
 
+tf_spine="${TF_SPINE:-rk}"
 tf_env="base"
 
 aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 
-s3_bucket="rk-devops-state-${aws_default_region}"
+s3_bucket="${tf_spine}-devops-state-${aws_default_region}"
 s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
 
 tf_version="${TF_VERSION:-0.9.4}"
