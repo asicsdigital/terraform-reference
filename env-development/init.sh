@@ -52,6 +52,7 @@ EOF
 if [ ! -s $FILE ]; then
   echo "Populating terraform.tf for this environment"
   echo "$TF" > $FILE
+  terraform fmt -list=false $FILE
 fi
 
 terraform init -backend=true \
