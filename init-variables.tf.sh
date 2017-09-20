@@ -28,6 +28,18 @@ provider "aws" {
   region  = "\${var.region}"
 }
 
+provider "aws" {
+  profile = "\${var.aws_profile}"
+  region  = "us-east-1"
+  alias   = "us-east-1"
+}
+
+provider "aws" {
+  profile = "\${var.aws_profile}"
+  region  = "us-west-1"
+  alias   = "us-west-1"
+}
+
 data "terraform_remote_state" "master_state" {
   backend = "s3"
   config {
