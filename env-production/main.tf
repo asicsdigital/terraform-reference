@@ -19,9 +19,7 @@ data "aws_route53_zone" "zone" {
 }
 
 data "aws_vpc" "vpc" {
-  tags {
-    Name = "${var.vpc_name}" # feel free to make this lookup more sophisticated
-  }
+  id = "${var.vpc_id}"
 }
 
 # this returns a list of strings
@@ -74,7 +72,7 @@ data "aws_acm_certificate" "cloudfront" {
   provider = "aws.us-east-1"
 }
 
-data "aws_acm_certificate" "lb" {
+data "aws_acm_certificate" "cert" {
   domain   = "${var.fqdn}"
   statuses = ["ISSUED"]
 }
