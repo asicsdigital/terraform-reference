@@ -13,6 +13,15 @@ echo $TF_PROJECT_NAME
 
 tf_spine="${TF_SPINE:-rk}"
 
+# Set stack if TF_STACK is set; if not, comment out the stack variable entirely
+if [[ "${TF_STACK}" ]] ; then
+  STACK_VAR_COMMENT_OPTIONAL=""
+  STACK_VAR_DEFAULT="$TF_STACK"
+else
+  STACK_VAR_COMMENT_OPTIONAL="# "
+  STACK_VAR_DEFAULT="ref"
+fi
+
 export VARIABLES_TF=$(cat <<EOF
 #  Variables.tf declares has the default variables that are shared by all environments
 # \$var.region, \$var.domain, \$var.tf_s3_bucket
@@ -58,7 +67,7 @@ variable "region" { default = "${aws_default_region}" }
 
 # This should be changed to reflect the service / stack defined by this repo
 # for example replace "ref" with "cms", "slackbot", etc
-variable "stack" { default = "ref" }
+${STACK_VAR_COMMENT_OPTIONAL}variable "stack" { default = "${STACK_VAR_DEFAULT}" }
 
 variable "tf_s3_bucket" {
   description = "S3 bucket Terraform can use for state"
