@@ -7,13 +7,14 @@ TLDR, but really, go read the post, it's way better then what I'm going to write
 The Current production [terraform version](https://github.com/FitnessKeeper/terraform-runkeeper#terraform-version) can be found here
 ### To create a new repo using the terraform-reference repo.
 
-- Clone the repo `git clone https://github.com/FitnessKeeper/terraform-reference`
-- Edit .env in the root of the repo, in particular make sure you add a TF_PROJECT_NAME
+- Clone the repo into a new directory for your project `git clone https://github.com/FitnessKeeper/terraform-reference terraform-<project name>`
+- Edit .env in the root of the repo, in particular make sure you add a TF_PROJECT_NAME (this should be the new name of the repo, `terraform-<project name>`)
   - When creating a `spike` make sure you update TF_SPINE in env if something other then `rk` is needed, at the time of this writing `rk` and `asics` are valid spines.
   - Also when creating ASICS `spikes` update to `TF_LOCK_TABLE=asics-services-terraformStateLock` 
+  - If needed, set TF_STACK for the `stack` variable
 - Initialize variables.tf, this only needs to be done once, when the repo is created run `./init-variables.tf.sh`
 -  Remove the old origin `git remote rm origin`
--  Add your new repo `git remote add origin https://github.com/FitnessKeeper/terraform-reference.git`
+-  Add your new repo `git remote add origin https://github.com/FitnessKeeper/terraform-<project name>.git`
 - Commit your changes
 - `git push -u origin master`
 - Edit variables.tf to reflect your new service
