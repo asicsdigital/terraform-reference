@@ -35,18 +35,21 @@ export VARIABLES_TF=$(cat <<EOF
 provider "aws" {
   profile = "\${var.aws_profile}"
   region  = "\${var.region}"
+  version = "1.29.0"
 }
 
 provider "aws" {
   profile = "\${var.aws_profile}"
   region  = "us-east-1"
   alias   = "us-east-1"
+  version = "1.29.0"
 }
 
 provider "aws" {
   profile = "\${var.aws_profile}"
   region  = "us-west-1"
   alias   = "us-west-1"
+  version = "1.29.0"
 }
 
 data "terraform_remote_state" "master_state" {
