@@ -13,10 +13,18 @@ echo $TF_PROJECT_NAME
 
 tf_spine="${TF_SPINE:-rk}"
 
+# Set stack if TF_STACK is set; if not, comment out the stack variable entirely
+if [[ "${TF_STACK}" ]] ; then
+  STACK_VAR_COMMENT_OPTIONAL=""
+  STACK_VAR_DEFAULT="$TF_STACK"
+else
+  STACK_VAR_COMMENT_OPTIONAL="# "
+  STACK_VAR_DEFAULT="ref"
+fi
+
 export VARIABLES_TF=$(cat <<EOF
 #  Variables.tf declares has the default variables that are shared by all environments
 # \$var.region, \$var.domain, \$var.tf_s3_bucket
-
 
 # Read credentials from environment variables
 #$ export AWS_ACCESS_KEY_ID="anaccesskey"
@@ -42,6 +50,7 @@ provider "aws" {
 
 data "terraform_remote_state" "master_state" {
   backend = "s3"
+
   config {
     bucket = "\${var.tf_s3_bucket}"
     region = "\${var.region}"
@@ -53,22 +62,37 @@ variable "aws_profile" {
   description = "Which AWS profile is should be used? Defaults to \"default\""
   default     = "default"
 }
-variable "region" { default = "${aws_default_region}" }
 
+variable "region" {
+  default = "${aws_default_region}"
+}
 
 # This should be changed to reflect the service / stack defined by this repo
 # for example replace "ref" with "cms", "slackbot", etc
-variable "stack" { default = "ref" }
+${STACK_VAR_COMMENT_OPTIONAL}variable "stack" {
+${STACK_VAR_COMMENT_OPTIONAL}  default = "${STACK_VAR_DEFAULT}"
+${STACK_VAR_COMMENT_OPTIONAL}}
 
 variable "tf_s3_bucket" {
   description = "S3 bucket Terraform can use for state"
   default     = "${tf_spine}-devops-state-${aws_default_region}"
 }
 
-variable "master_state_file" { default = "${TF_PROJECT_NAME}/state/base/base.tfstate" }
-variable "prod_state_file" { default = "${TF_PROJECT_NAME}/state/production/production.tfstate" }
-variable "staging_state_file" { default = "${TF_PROJECT_NAME}/state/staging/staging.tfstate" }
-variable "dev_state_file" { default = "${TF_PROJECT_NAME}/state/dev/dev.tfstate" }
+variable "master_state_file" {
+  default = "${TF_PROJECT_NAME}/state/base/base.tfstate"
+}
+
+variable "prod_state_file" {
+  default = "${TF_PROJECT_NAME}/state/production/production.tfstate"
+}
+
+variable "staging_state_file" {
+  default = "${TF_PROJECT_NAME}/state/staging/staging.tfstate"
+}
+
+variable "dev_state_file" {
+  default = "${TF_PROJECT_NAME}/state/dev/dev.tfstate"
+}
 
 EOF
 )
