@@ -1,3 +1,3 @@
 # PRODUCTION
 
-env = "production"
+env = "prod"
