@@ -1,0 +1,744 @@
+---
+# Anchors for aliases
+# Original refrence file https://github.com/asicsdigital/terraform-reference
+#
+# This file should provide a working example of one possible workflow for an app
+# deployed using docker containers. This example builds and deploys an application
+# git tags to deploy to development, staging, and production with "deploy-dev/staging/hotfix-"
+# tag prefix. Production releases are initiated by deploying a tag with a symantic version. (vXX.XX.Xx)
+#
+# It should provide a starting point and should be changed as needed.
+# We use YAML Aliases https://blog.daemonl.com/2016/02/yaml.html to
+# decrease code duplication and make the CircleCI config easier to read.
+# At some point in the future, we will start using Orbs which will also help address
+# Some of the challenges that our use of Aliases does.
+#  #
+# Change IMAGE_NAME for your project
+# Change SERVICE_IDENTIFIER for our project. This should match service_identifier in terraform
+project_env_vars: &project_env_vars
+  environment:
+    SERVICE_IDENTIFIER: payments
+    IMAGE_NAME: asicsdigital/payments
+    GOSS_PATH:  /home/circleci/bin/goss
+    GOSS_FILES_STRATEGY: cp
+
+# Docker Image used to run terraform.
+# Change to use the version of terraform you want to use asicsdigital/hermes:terraform-XX.XX.XX
+docker_terraform: &docker_terraform
+  working_directory: ~/app
+  docker:
+    - image: asicsdigital/hermes:terraform-0.11.7
+      entrypoint: /bin/sh
+
+# Docker Image is used to build you docker image, this can be changed as needed
+docker_image: &docker_image
+  docker:
+    - image: circleci/buildpack-deps:stable-curl
+
+# This is the VAULT_ADDR for the Vault to be used for each step in the CI process.
+# This should be a reasonable default but could be changed as needed. Possible values are:
+# https://vault.us-east-1.dev.asics.digital
+# https://vault.us-west-1.dev.asics.digital
+# https://vault.us-east-1.dev.rkcloud.us
+vault_addr_dev: &vault_addr_dev
+  environment:
+    VAULT_ADDR: https://vault.us-east-1.dev.asics.digital
+
+vault_addr_staging: &vault_addr_staging
+  environment:
+    VAULT_ADDR: https://vault.us-east-1.staging.asics.digital
+
+vault_addr_prod: &vault_addr_prod
+  environment:
+    VAULT_ADDR: https://vault.us-east-1.prod.asics.digital
+# End of values to be changed, in most cases.
+
+# Docker login  - These credentials exit as a global env var in our CI Tool
+docker_login: &docker_login
+  name: "Docker Login"
+  command: |
+    docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
+
+install_goss: &install_goss
+  name: Install goss
+  command: |
+    # rather than give internet scripts SU rights, we install to local user bin and add to path
+    mkdir ~/bin
+    export GOSS_DST=~/bin
+    export PATH=$PATH:~/bin
+    curl -fsSL https://goss.rocks/install | sh
+    goss -version
+
+run_goss_tests: &run_goss_tests
+  name: "Run goss Tests"
+  command: |
+    docker build . -t app:$TAG
+    cd tests
+    export PATH=$PATH:~/bin
+    dgoss run -it --entrypoint /bin/sh app:$TAG
+
+build_for_deployment: &build_for_deployment
+  name: "Docker build and push Docker Image for Deployment"
+  command: |
+    DOCKER_IMAGE=${IMAGE_NAME}:${CIRCLE_SHA1}
+    DOCKER_BUILD_TAG=${IMAGE_NAME}:build-${CIRCLE_BUILD_NUM}
+    DOCKER_DEPLOY_DEFAULT=${IMAGE_NAME}:${TAG}
+    mkdir -p /tmp/workspace
+    echo ${DOCKER_IMAGE} > /tmp/workspace/docker_image
+    echo ${SERVICE_IDENTIFIER} > /tmp/workspace/service_identifier
+    docker build -t ${DOCKER_IMAGE} .
+    docker tag ${DOCKER_IMAGE} ${DOCKER_BUILD_TAG}
+    docker tag ${DOCKER_IMAGE} ${DOCKER_DEPLOY_DEFAULT}
+    docker push ${DOCKER_IMAGE}
+    docker push ${DOCKER_BUILD_TAG}
+    docker push ${DOCKER_DEPLOY_DEFAULT}
+    echo "Pushed: ${DOCKER_IMAGE}"
+
+upload_build_to_consul: &upload_build_to_consul
+  name: "Upload Deployment Data to Consul"
+  command: |
+    DOCKER_IMAGE=$(cat /tmp/workspace/docker_image)
+    SERVICE_IDENTIFIER=$(cat /tmp/workspace/service_identifier)
+    put-consul-kv ${SERVICE_IDENTIFIER}/docker-image "${DOCKER_IMAGE}"
+    put-consul-kv ${SERVICE_IDENTIFIER}/sha1hash "${CIRCLE_SHA1}"
+
+upload_rc_build_to_consul: &upload_rc_build_to_consul
+  name: "Upload Deployment Data to Consul"
+  command: |
+    DOCKER_IMAGE=$(cat /tmp/workspace/docker_image)
+    SERVICE_IDENTIFIER=$(cat /tmp/workspace/service_identifier)
+    put-consul-kv ${SERVICE_IDENTIFIER}/rc/docker-image "${DOCKER_IMAGE}"
+    put-consul-kv ${SERVICE_IDENTIFIER}/rc/sha1hash "${CIRCLE_SHA1}"
+
+terraform_fmt: &terraform_fmt
+  name: terraform-fmt
+  command: terraform fmt -write=false -list=true -diff=true
+
+terraform_init: &terraform_init
+  name: terraform-init
+  command: terraform init -input=false -lock-timeout=120s
+
+terraform_validate: &terraform_validate
+  name: terraform-validate
+  command: terraform validate -check-variables=false
+
+terraform_plan: &terraform_plan
+  name: terraform-plan
+  command: terraform plan -lock-timeout=120s
+
+terraform_apply: &terraform_apply
+  name: terraform-apply
+  command: terraform apply -auto-approve=true -lock-timeout=120s
+
+set_dev_env: &set_dev_env
+  name: Setup Dev Environment Variables
+  command: |
+    echo 'export "VAULT_PAYLOAD=$DEV_vault_payload_us_east_1"' >> $BASH_ENV
+#The above variables are set in circle ci environment TODO: Move to vault?
+
+set_staging_env: &set_staging_env
+  name: Setup Staging Environment Variables
+  command: |
+    echo 'export "VAULT_PAYLOAD=$STAGING_vault_payload_us_east_1"' >> $BASH_ENV
+
+set_prod_env: &set_prod_env
+  name: Setup Prod Environment Variables
+  command: |
+    echo 'export "VAULT_PAYLOAD=$PROD_vault_payload_us_east_1"' >> $BASH_ENV
+
+set_auth_tokens: &set_auth_tokens
+  name: "Get credentials from Vault"
+  command: |
+    echo "VAULT_PAYLOAD: ${VAULT_PAYLOAD}"
+    echo "VAULT_ADDR: ${VAULT_ADDR}"
+    set-vault-token
+    get-iam-auth
+
+get_consul_htpasswd: &get_consul_htpasswd
+  name: get-consul-htpasswd
+  command: get-consul-http-auth
+
+revoke_lease: &revoke_lease
+  name: "Revoke AWS IAM credentials from Vault"
+  command: lease-revoke
+# End Anchors
+
+# In this section we will define all the jobs that are used in the workflow
+version: 2
+jobs:
+# This step tests and builds a docker image
+  build:
+    working_directory: ~/app
+    <<: *docker_image
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *docker_login
+      - run:
+          <<: *install_goss
+      - run:
+          environment:
+            TAG: core
+          <<: *run_goss_tests
+      - run:
+          environment:
+            TAG: deploy-dev
+          <<: *build_for_deployment
+
+  build-for-deployment-dev:
+    working_directory: ~/app
+    <<: *docker_image
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *docker_login
+      - run:
+          <<: *install_goss
+      - run:
+          environment:
+            TAG: core
+          <<: *run_goss_tests
+      - run:
+          environment:
+            TAG: deploy-dev
+          <<: *build_for_deployment
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - docker_image
+            - service_identifier
+
+  build-for-deployment-staging:
+    working_directory: ~/app
+    <<: *docker_image
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *docker_login
+      - run:
+          <<: *install_goss
+      - run:
+          environment:
+            TAG: deploy-staging
+          <<: *run_goss_tests
+      - run:
+          environment:
+            TAG: deploy-staging
+          <<: *build_for_deployment
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - docker_image
+            - service_identifier
+
+  build-for-deployment-prod:
+    working_directory: ~/app
+    <<: *docker_image
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *docker_login
+      - run:
+          <<: *install_goss
+      - run:
+          environment:
+            TAG: deploy-prod
+          <<: *run_goss_tests
+      - run:
+          environment:
+            TAG: deploy-prod
+          <<: *build_for_deployment
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - docker_image
+            - service_identifier
+
+# This section defines uploading artifact (image) metadata to consul
+  upload-to-consul-dev:
+    working_directory: ~/app
+    <<: *docker_terraform
+    <<: *vault_addr_dev
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          <<: *set_dev_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          <<: *get_consul_htpasswd
+      - run:
+          <<: *upload_build_to_consul
+
+  upload-to-consul-staging:
+    working_directory: ~/app
+    <<: *docker_terraform
+    <<: *vault_addr_staging
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          <<: *set_staging_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          <<: *get_consul_htpasswd
+      - run:
+          <<: *upload_build_to_consul
+
+  upload-to-consul-prod:
+    working_directory: ~/app
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          <<: *get_consul_htpasswd
+      - run:
+          <<: *upload_build_to_consul
+
+# This job uploads image metadata in the staging job to the *prod* consul
+# This was done to make artifact re-use easier if that is a part of your workflow.
+  upload-rc-to-consul-prod:
+    working_directory: ~/app
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    <<: *project_env_vars
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          <<: *get_consul_htpasswd
+      - run:
+          <<: *upload_rc_build_to_consul
+  fmt:
+    <<: *docker_terraform
+    steps:
+      - checkout
+      - run:
+          <<: *terraform_fmt
+
+# Base is mostly unused but is left in for completness and can be used by
+# projects that would like to run terraform outside a specifig tier.
+  base:
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    steps:
+      - checkout
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/base
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/base
+          <<: *terraform_validate
+      - run:
+          name: terraform-plan
+          command: |
+            echo "base"
+          working_directory: ~/app/terraform/base
+      - run:
+          <<: *revoke_lease
+
+  base-deploy:
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    steps:
+      - checkout
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/base
+          <<: *terraform_init
+      - run:
+          name: terraform-apply -auto-approve=true
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "base-release" ]; then
+              cd ~/app/terraform/base ;
+              terraform apply -lock-timeout=120s \
+                -var 'consul_htpasswd=""' \
+                -var 'consul_http_auth=""' \
+                -var 'consul_http_addr'=""' \
+                -var 'database_cidrs=[]' \
+                -var 'elasticache_cidrs=[]' \
+                -var 'private_cidrs=[]' \
+                -var 'public_cidrs=[]' \
+                -var 'vpc_cidr=null' \
+                -var 'kms_secret_vault_unseal_key=null'
+            fi
+          working_directory: ~/app/terraform/base
+      - run:
+          <<: *revoke_lease
+
+# Terraform Jobs for development
+  plan-dev:
+    <<: *docker_terraform
+    <<: *vault_addr_dev
+    steps:
+      - checkout
+      - run:
+          <<: *set_dev_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_plan
+      - run:
+          <<: *revoke_lease
+
+  deploy-dev:
+    <<: *docker_terraform
+    <<: *vault_addr_dev
+    steps:
+      - checkout
+      - run:
+          <<: *set_dev_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_plan
+      - run:
+          working_directory: ~/app/terraform/env-development
+          <<: *terraform_apply
+      - run:
+          <<: *revoke_lease
+
+# Terraform Jobs for Staging
+  plan-staging:
+    <<: *docker_terraform
+    <<: *vault_addr_staging
+    steps:
+      - checkout
+      - run:
+          <<: *set_staging_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_plan
+      - run:
+          <<: *revoke_lease
+
+  deploy-staging:
+    <<: *docker_terraform
+    <<: *vault_addr_staging
+    steps:
+      - checkout
+      - run:
+          <<: *set_staging_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_plan
+      - run:
+          working_directory: ~/app/terraform/env-staging
+          <<: *terraform_apply
+      - run:
+          <<: *revoke_lease
+
+# Terraform Jobs for Production
+  plan-prod:
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    steps:
+      - checkout
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_plan
+      - run:
+          <<: *revoke_lease
+
+  deploy-prod:
+    <<: *docker_terraform
+    <<: *vault_addr_prod
+    steps:
+      - checkout
+      - run:
+          <<: *set_prod_env
+      - run:
+          <<: *set_auth_tokens
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *get_consul_htpasswd
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_init
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_validate
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_plan
+      - run:
+          working_directory: ~/app/terraform/env-production
+          <<: *terraform_apply
+      - run:
+          <<: *revoke_lease
+
+# This section defines workflows
+# filters are used to trigger partifular flow based on tags in this example but
+# can be changed to use branches as desired. https://circleci.com/docs/2.0/configuration-reference/#filters
+workflows:
+  version: 2
+  build-app:
+    jobs:
+      # Build Workflow runs tests, builds images and runs terraform plans
+      - build:
+          context: org-global
+          filters:
+            branches:
+              ignore: master
+      - fmt:
+          requires:
+            - build
+      - base:
+          context: org-global
+          requires:
+            - fmt
+      - plan-dev:
+          context: org-global
+          requires:
+            - fmt
+      - plan-staging:
+          context: org-global
+          requires:
+            - fmt
+      - plan-prod:
+          context: org-global
+          requires:
+            - fmt
+
+  deploy-dev:
+    jobs:
+      - build-for-deployment-dev:
+          context: org-global
+          filters:
+            tags:
+              only: /^deploy-dev-.+/
+            branches:
+              ignore: /.*/
+      - upload-to-consul-dev:
+          context: org-global
+          requires:
+            - build-for-deployment-dev
+          filters:
+            tags:
+              only: /^deploy-dev-.+/
+            branches:
+              ignore: /.*/
+      - fmt:
+          requires:
+            - upload-to-consul-dev
+          filters:
+            tags:
+              only: /^deploy-dev-.+/
+            branches:
+              ignore: /.*/
+      - deploy-dev:
+          context: org-global
+          requires:
+            - fmt
+          filters:
+            tags:
+              only: /^deploy-dev-.+/
+            branches:
+              ignore: /.*/
+
+  deploy-staging:
+    jobs:
+      - build-for-deployment-staging:
+          context: org-global
+          filters:
+            tags:
+              only: /^deploy-staging-.+/
+            branches:
+              ignore: /.*/
+      - upload-to-consul-staging:
+          context: org-global
+          requires:
+            - build-for-deployment-staging
+          filters:
+            tags:
+              only: /^deploy-staging-.+/
+            branches:
+              ignore: /.*/
+      - fmt:
+          requires:
+            - upload-to-consul-staging
+          filters:
+            tags:
+              only: /^deploy-staging-.+/
+            branches:
+              ignore: /.*/
+      - deploy-staging:
+          context: org-global
+          requires:
+            - fmt
+          filters:
+            tags:
+              only: /^deploy-staging-.+/
+            branches:
+              ignore: /.*/
+      # Upload release candidatate build info to Consul
+      - upload-rc-to-consul-prod:
+          context: org-global
+          requires:
+            - deploy-staging
+          filters:
+            tags:
+              only: /^deploy-staging-.+/
+            branches:
+              ignore: /.*/
+
+  deploy-prod:
+    jobs:
+      - build-for-deployment-prod:
+          context: org-global
+          filters:
+            tags:
+              only: /^deploy-prod-.+/
+            branches:
+              ignore: /.*/
+      - upload-to-consul-prod:
+          context: org-global
+          requires:
+            - build-for-deployment-prod
+          filters:
+            tags:
+              only: /^deploy-prod-.+/
+            branches:
+              ignore: /.*/
+      - fmt:
+          requires:
+            - upload-to-consul-prod
+          filters:
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*/
+            branches:
+              ignore: /.*/
+      - deploy-prod:
+          context: org-global
+          requires:
+            - fmt
+          filters:
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*/
+            branches:
+              ignore: /.*/
+  deploy-hotfix:
+    jobs:
+      - build-for-deployment-prod:
+          context: org-global
+          filters:
+            tags:
+              only: /^deploy-hotfix-.+/
+            branches:
+              ignore: /.*/
+      - upload-to-consul-prod:
+          context: org-global
+          requires:
+            - build-for-deployment-prod
+          filters:
+            tags:
+              only: /^deploy-hotfix-.+/
+            branches:
+              ignore: /.*/
+      - fmt:
+          context: org-global
+          requires:
+            - upload-to-consul-prod
+          filters:
+            tags:
+              only: /^deploy-hotfix-.+/
+            branches:
+              ignore: /.*/
+      - deploy-prod:
+          context: org-global
+          requires:
+            - fmt
+          filters:
+            tags:
+              only: /^deploy-hotfix-.+/
+            branches:
+              ignore: /.*/
