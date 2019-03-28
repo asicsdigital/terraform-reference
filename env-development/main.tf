@@ -1,43 +1,29 @@
-# DEVELOPMENT
+data "aws_availability_zones" "available" {} #TODO: is this right?
 
-data "aws_availability_zones" "available" {}
-
-data "aws_region" "current" {
-  current = true
-}
-
-data "aws_region" "us-east-1" {
-  name = "us-east-1"
-}
-
-data "aws_region" "us-west-1" {
-  name = "us-west-1"
-}
-
-data "aws_route53_zone" "zone" {
-  name = "${var.fqdn}." # feel free to make this lookup more sophisticated
-}
+data "aws_region" "current" {}
 
 data "aws_vpc" "vpc" {
-  id = "${var.vpc_id}"
+  id = "${data.consul_keys.vpc.var.id}"
 }
 
-# this returns a list of strings
-# _e.g._ public_subnets = ["${data.aws_subnet_ids.public}"]
+data "aws_route53_zone" "region" {
+  name = "${data.aws_region.current.name}.${var.env}.asics.digital."
+}
+
+data "aws_route53_zone" "env" {
+  name = "${var.env}.asics.digital."
+}
+
+data "aws_ecs_cluster" "ecs" {
+  cluster_name = "${local.ecs_cluster_name}"
+}
+
 data "aws_subnet_ids" "public" {
   vpc_id = "${data.aws_vpc.vpc.id}"
 
   tags {
     Tier = "public"
   }
-}
-
-# this converts the corresponding list of strings
-# into a list of resources
-# _e.g._ public_cidrs = ["${data.aws_subnet.public.*[cidr_block]}"]
-data "aws_subnet" "public" {
-  count = "${length(data.aws_subnet_ids.public.ids)}"
-  id    = "${data.aws_subnet_ids.public.ids[count.index]}"
 }
 
 data "aws_subnet_ids" "private" {
@@ -48,11 +34,6 @@ data "aws_subnet_ids" "private" {
   }
 }
 
-data "aws_subnet" "private" {
-  count = "${length(data.aws_subnet_ids.private.ids)}"
-  id    = "${data.aws_subnet_ids.private.ids[count.index]}"
-}
-
 data "aws_subnet_ids" "database" {
   vpc_id = "${data.aws_vpc.vpc.id}"
 
@@ -61,18 +42,65 @@ data "aws_subnet_ids" "database" {
   }
 }
 
-data "aws_subnet" "database" {
-  count = "${length(data.aws_subnet_ids.database.ids)}"
-  id    = "${data.aws_subnet_ids.database.ids[count.index]}"
-}
-
-data "aws_acm_certificate" "cloudfront" {
-  domain   = "${var.fqdn}"
-  statuses = ["ISSUED"]
-  provider = "aws.us-east-1"
-}
-
 data "aws_acm_certificate" "cert" {
-  domain   = "${var.fqdn}"
-  statuses = ["ISSUED"]
+  domain      = "${var.env}.asics.digital"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+data "aws_acm_certificate" "us-east-1" {
+  provider    = "aws.us-east-1"
+  domain      = "${var.env}.asics.digital"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+data "aws_security_group" "ecs_cluster" {
+  tags {
+    Name = "ecs-sg-asics-services-${var.env}-infra-svc"
+  }
+}
+
+data "aws_security_group" "consul" {
+  tags {
+    Name = "ecs-sg-consul-${var.env}"
+  }
+}
+
+data "aws_security_group" "consul_secondary" {
+  tags {
+    Name = "ecs-sg-consul-${var.env}-secondary"
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_lambda_function" "logdna" {
+  function_name = "LogDNA-${var.env}"
+}
+
+data "consul_keys" "vpc" {
+  key {
+    name = "id"
+    path = "aws/vpc/VpcId"
+  }
+}
+
+data "consul_keys" "app" {
+  key {
+    name    = "docker_image"
+    path    = "${local.service_identifier}/docker-image"
+    default = "asicsdigital/${local.service_identifier}:deploy-${var.env}"
+  }
+}
+
+provider "vault" {
+  version = "1.5.0"
+  address = "${local.vault_addr}"
+}
+
+provider "consul" {
+  address   = "asics-services.${data.aws_region.current.name}.${var.env}.asics.digital"
+  http_auth = "${var.consul_http_auth}"
+  scheme    = "https"
 }

@@ -30,8 +30,8 @@ aws_default_region="${AWS_DEFAULT_REGION:-us-east-1}"
 s3_bucket="${tf_spine}-devops-state-${aws_default_region}"
 s3_prefix="${TF_PROJECT_NAME}/state/${tf_env}"
 
-tf_version="${TF_VERSION:-0.11.7}"
-tf_lock_table="${TF_LOCK_TABLE:-rk-terraformStateLock}"
+tf_version="${TF_VERSION:-0.11.11}"
+tf_lock_table="${TF_LOCK_TABLE:-asics-services-terraformStateLock}"
 
 FILE="terraform.tf"
 

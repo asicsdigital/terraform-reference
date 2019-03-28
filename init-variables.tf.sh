@@ -11,7 +11,7 @@ if [ -z ${TF_PROJECT_NAME} ]; then
 fi
 echo $TF_PROJECT_NAME
 
-tf_spine="${TF_SPINE:-rk}"
+tf_spine="${TF_SPINE:-asics}"
 
 # Set stack if TF_STACK is set; if not, comment out the stack variable entirely
 if [[ "${TF_STACK}" ]] ; then
@@ -32,18 +32,16 @@ export VARIABLES_TF=$(cat <<EOF
 #$ export AWS_DEFAULT_REGION="us-west-2"
 #$ terraform plan
 provider "aws" {
-  profile = "\${var.aws_profile}"
+  version = "1.60"
   region  = "\${var.region}"
 }
 
 provider "aws" {
-  profile = "\${var.aws_profile}"
   region  = "us-east-1"
   alias   = "us-east-1"
 }
 
 provider "aws" {
-  profile = "\${var.aws_profile}"
   region  = "us-west-1"
   alias   = "us-west-1"
 }
