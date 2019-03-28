@@ -4,6 +4,8 @@ variable "env" {
   type = "string"
 }
 
+variable "consul_http_auth" {}
+
 variable "fqdn" {
   type = "string"
 }
