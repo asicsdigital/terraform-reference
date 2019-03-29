@@ -12,7 +12,7 @@ resource "vault_mount" "secret" {
 }
 
 data "vault_generic_secret" "db" {
-  path = "${local.service_identifier}/secret/aws/rds/${local.service_identifier}"
+  path = "${local.service_identifier}/secret/aws/rds/${local.task_identifier}"
 }
 
 data "vault_generic_secret" "app" {
