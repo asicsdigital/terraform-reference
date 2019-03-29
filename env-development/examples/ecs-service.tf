@@ -1,5 +1,30 @@
 # app.tf
 
+variable "app_port" {
+  description = "Port on which application listens (default 80)"
+  default     = 80
+}
+
+variable "api_docker_image" {
+  description = "Docker image to pull for api ECS task"
+  default     = ""
+}
+
+variable "docker_memory" {
+  default     = "512"
+  description = "Max Memory reservation for ECS Task"
+}
+
+variable "docker_memory_reservation" {
+  default     = "128"
+  description = "Min Memory reservation for ECS Task"
+}
+
+variable "ecs_desired_count" {
+  default     = "1"
+  description = "Desired count of ECS Tasks running"
+}
+
 module "app" {
   source                    = "github.com/FitnessKeeper/terraform-aws-ecs-service?ref=v3.1.0"
   region                    = "${data.aws_region.current.name}"
