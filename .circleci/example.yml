@@ -18,6 +18,7 @@
 project_env_vars: &project_env_vars
   environment:
     SERVICE_IDENTIFIER: payments
+    TASK_IDENTIFIER: app
     IMAGE_NAME: asicsdigital/payments
     GOSS_PATH:  /home/circleci/bin/goss
     GOSS_FILES_STRATEGY: cp
@@ -27,7 +28,7 @@ project_env_vars: &project_env_vars
 docker_terraform: &docker_terraform
   working_directory: ~/app
   docker:
-    - image: asicsdigital/hermes:terraform-0.11.7
+    - image: asicsdigital/hermes:terraform-0.11.11
       entrypoint: /bin/sh
 
 # Docker Image is used to build you docker image, this can be changed as needed
@@ -86,6 +87,7 @@ build_for_deployment: &build_for_deployment
     mkdir -p /tmp/workspace
     echo ${DOCKER_IMAGE} > /tmp/workspace/docker_image
     echo ${SERVICE_IDENTIFIER} > /tmp/workspace/service_identifier
+    echo ${TASK_IDENTIFIER} > /tmp/workspace/task_identifier
     docker build -t ${DOCKER_IMAGE} .
     docker tag ${DOCKER_IMAGE} ${DOCKER_BUILD_TAG}
     docker tag ${DOCKER_IMAGE} ${DOCKER_DEPLOY_DEFAULT}
@@ -99,16 +101,18 @@ upload_build_to_consul: &upload_build_to_consul
   command: |
     DOCKER_IMAGE=$(cat /tmp/workspace/docker_image)
     SERVICE_IDENTIFIER=$(cat /tmp/workspace/service_identifier)
-    put-consul-kv ${SERVICE_IDENTIFIER}/docker-image "${DOCKER_IMAGE}"
-    put-consul-kv ${SERVICE_IDENTIFIER}/sha1hash "${CIRCLE_SHA1}"
+    TASK_IDENTIFIER=$(cat /tmp/workspace/task_identifier)
+    put-consul-kv "${SERVICE_IDENTIFIER}/${TASK_IDENTIFIER}/docker-image" "${DOCKER_IMAGE}"
+    put-consul-kv ${SERVICE_IDENTIFIER}/${TASK_IDENTIFIER}/sha1hash "${CIRCLE_SHA1}"
 
 upload_rc_build_to_consul: &upload_rc_build_to_consul
   name: "Upload Deployment Data to Consul"
   command: |
     DOCKER_IMAGE=$(cat /tmp/workspace/docker_image)
     SERVICE_IDENTIFIER=$(cat /tmp/workspace/service_identifier)
-    put-consul-kv ${SERVICE_IDENTIFIER}/rc/docker-image "${DOCKER_IMAGE}"
-    put-consul-kv ${SERVICE_IDENTIFIER}/rc/sha1hash "${CIRCLE_SHA1}"
+    TASK_IDENTIFIER=$(cat /tmp/workspace/task_identifier)
+    put-consul-kv ${SERVICE_IDENTIFIER}/${TASK_IDENTIFIER}/rc/docker-image "${DOCKER_IMAGE}"
+    put-consul-kv ${SERVICE_IDENTIFIER}/${TASK_IDENTIFIER}/rc/sha1hash "${CIRCLE_SHA1}"
 
 terraform_fmt: &terraform_fmt
   name: terraform-fmt
@@ -211,6 +215,7 @@ jobs:
           paths:
             - docker_image
             - service_identifier
+            - task_identifier
 
   build-for-deployment-staging:
     working_directory: ~/app
@@ -236,6 +241,7 @@ jobs:
           paths:
             - docker_image
             - service_identifier
+            - task_identifier
 
   build-for-deployment-prod:
     working_directory: ~/app
@@ -261,6 +267,7 @@ jobs:
           paths:
             - docker_image
             - service_identifier
+            - task_identifier
 
 # This section defines uploading artifact (image) metadata to consul
   upload-to-consul-dev:
