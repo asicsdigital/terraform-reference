@@ -89,13 +89,13 @@ data "consul_keys" "vpc" {
 data "consul_keys" "app" {
   key {
     name    = "docker_image"
-    path    = "${local.service_identifier}/docker-image"
-    default = "asicsdigital/${local.service_identifier}:deploy-${var.env}"
+    path    = "${local.service_identifier}/${local.task_identifier}/docker-image"
+    default = "asicsdigital/${local.service_identifier}-${local.task_identifier}:deploy-${var.env}"
   }
 }
 
 provider "vault" {
-  version = "1.5.0"
+  version = "1.6.0"
   address = "${local.vault_addr}"
 }
 
