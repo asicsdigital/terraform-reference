@@ -10,5 +10,5 @@ provider "consul" {
 }
 
 provider "aws" {
-  version = "~ 2.46.0"
+  version = "~> 2.46.0"
 }
