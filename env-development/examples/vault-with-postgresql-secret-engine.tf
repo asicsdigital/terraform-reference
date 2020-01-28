@@ -21,11 +21,19 @@ data "vault_generic_secret" "app" {
 
 # Allow the ECS Task to auth to vault
 resource "vault_aws_auth_backend_role" "app" {
-  backend                  = "aws/"
-  role                     = "${local.service_identifier}-${local.task_identifier}"
-  auth_type                = "iam"
-  bound_iam_principal_arns = ["${module.app.task_iam_role_arn}"]
-  policies                 = ["${vault_policy.app.name}"]
+  backend   = "aws/"
+  role      = "${local.service_identifier}-${local.task_identifier}"
+  auth_type = "iam"
+  # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
+  # force an interpolation expression to be interpreted as a list by wrapping it
+  # in an extra set of list brackets. That form was supported for compatibility in
+  # v0.11, but is no longer supported in Terraform v0.12.
+  #
+  # If the expression in the following list itself returns a list, remove the
+  # brackets to avoid interpretation as a list of lists. If the expression
+  # returns a single list item then leave it as-is and remove this TODO comment.
+  bound_iam_principal_arns = [module.app.task_iam_role_arn]
+  policies                 = [vault_policy.app.name]
   ttl                      = "86400"
 }
 
@@ -43,6 +51,7 @@ path "${local.service_identifier}/rds/creds/${local.task_identifier}" {
   policy = "read"
 }
 EOT
+
 }
 
 # Database Secret Engine
@@ -53,19 +62,27 @@ resource "vault_mount" "database" {
 }
 
 resource "vault_database_secret_backend_connection" "database" {
-  backend       = "${vault_mount.database.path}"
-  name          = "${local.service_identifier}"
-  allowed_roles = ["${local.task_identifier}"]
+  backend = vault_mount.database.path
+  name    = local.service_identifier
+  # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
+  # force an interpolation expression to be interpreted as a list by wrapping it
+  # in an extra set of list brackets. That form was supported for compatibility in
+  # v0.11, but is no longer supported in Terraform v0.12.
+  #
+  # If the expression in the following list itself returns a list, remove the
+  # brackets to avoid interpretation as a list of lists. If the expression
+  # returns a single list item then leave it as-is and remove this TODO comment.
+  allowed_roles = [local.task_identifier]
 
   postgresql {
-    connection_url = "${local.connection_url}"
+    connection_url = local.connection_url
   }
 }
 
 resource "vault_database_secret_backend_role" "app" {
-  backend             = "${vault_mount.database.path}"
-  name                = "${local.task_identifier}"
-  db_name             = "${vault_database_secret_backend_connection.database.name}"
-  creation_statements = "${local.vault_rw_sql}"
+  backend             = vault_mount.database.path
+  name                = local.task_identifier
+  db_name             = vault_database_secret_backend_connection.database.name
+  creation_statements = local.vault_rw_sql
   default_ttl         = "86400"
 }
