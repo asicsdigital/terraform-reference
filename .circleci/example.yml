@@ -28,7 +28,7 @@ project_env_vars: &project_env_vars
 docker_terraform: &docker_terraform
   working_directory: ~/app
   docker:
-    - image: asicsdigital/hermes:terraform-0.11.11
+    - image: asicsdigital/hermes:terraform-0.12.17
       entrypoint: /bin/sh
 
 # Docker Image is used to build you docker image, this can be changed as needed
