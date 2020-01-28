@@ -1,5 +1,5 @@
 # local
-.env
+_*
 secrets.tfvars
 .DS_Store
 
@@ -31,5 +31,3 @@ Session.vim
 *~
 # auto-generated tag files
 tags
-
-
