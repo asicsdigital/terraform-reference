@@ -32,7 +32,7 @@ export VARIABLES_TF=$(cat <<EOF
 #$ export AWS_DEFAULT_REGION="us-west-2"
 #$ terraform plan
 provider "aws" {
-  version = "~ 2.46.0"
+  version = "~> 2.46.0"
   region  = "\${var.region}"
 }
 
