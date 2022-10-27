@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Example containing topic and an attached queue"
+Parameters:
+  topicDisplayName:
+    Type: String
+    Description: "display name for the SNS topic"
+
+Resources:
+  topic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: "|Ref|topicDisplayName"
+      Subscription:
+        - Endpoint: "|GetAtt|queue|Arn"
+          Protocol: sqs
+
+  queue:
+    Type: "AWS::SQS::Queue"
+
+  schedulingQueuePolicy:
+    Type: "AWS::SQS::QueuePolicy"
+    Properties:
+      Queues:
+        - "|Ref|queue"
+      PolicyDocument:
+        Statement:
+          - Action: SQS:SendMessage
+            Condition:
+              ArnEquals:
+                aws:SourceArn: "|Ref|topic"
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Resource: "|GetAtt|queue|Arn"
+        Version: "2012-10-17"
+
+Outputs:
+  topicArn:
+    Description: "ARN of the topic"
+    Value: "|Ref|topic"
+  queueName:
+    Description: "Name of the queue"
+    Value: "|GetAtt|queue|QueueName"
+  queueArn:
+    Description: "ARN of the queue"
+    Value: "|GetAtt|queue|Arn"
